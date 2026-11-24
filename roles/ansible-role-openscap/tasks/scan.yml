@@ -1,0 +1,41 @@
+- block:
+    # ================ begin block ================
+    - name: Run openscap to evaluate compliance
+      ansible.builtin.command: oscap xccdf eval \
+        --profile {{ oscap_profile }} \
+        --results-arf /tmp/oscap-arf.xml \
+        --report /tmp/oscap-report.html \
+        --tailoring-file /usr/share/xml/scap/ssg/content/tailoring-xccdf.xml \
+        /usr/share/xml/scap/ssg/content/{{ oscap_policy }}.xml
+      ignore_errors: true
+      register: scap_cmd
+
+    - name: Generate Ansible remediation playbook
+      ansible.builtin.command: oscap xccdf generate fix \
+        --fix-type ansible \
+        --profile {{ oscap_profile }} \
+        --tailoring-file /usr/share/xml/scap/ssg/content/tailoring-xccdf.xml \
+        --output /tmp/oscap-remediation.yml \
+        /tmp/oscap-arf.xml
+      ignore_errors: true
+      register: rem_cmd
+      when:
+        - remediate is defined
+        - remediate|bool
+
+    - name: Check for failure and escalate unless specified otherwise
+      ansible.builtin.fail:
+        msg: Security scan failed
+      when:
+        - scap_cmd.rc | int != 0
+        - ((ignore_errors is defined and not ignore_errors|bool) or (ignore_errors is not defined))
+        - (remediate is not defined or not remediate|bool)
+        
+    # ================= end block =================
+  always:
+    # =========== begin 'always' block =============
+    - name: Download HTML report
+      fetch:
+        src: /tmp/oscap-report.html
+        dest: oscap-reports/report.html
+        flat: true

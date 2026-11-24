@@ -1,0 +1,8 @@
+---
+# tasks file for ansible-role-openscap
+
+- include_tasks: prepare.yml
+
+- include_tasks: scan.yml
+
+- include_tasks: remediate.yml

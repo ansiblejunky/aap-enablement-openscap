@@ -1,0 +1,18 @@
+- name: Scan a target system and generate report
+  hosts: all
+  gather_facts: true
+
+  vars:
+    oscap_profile: xccdf_org.ssgproject.content_profile_anssi_bp28_enhanced_customized
+    oscap_policy: ssg-centos8-ds
+    oscap_remediate: false
+    oscap_report_email_address: johnw@redhat.com
+    
+  environment:
+    http_proxy: "{{ proxy_server if use_proxy is defined and use_proxy|bool else '' }}"
+    https_proxy: "{{ proxy_server if use_proxy is defined and use_proxy|bool else '' }}"
+
+  tasks:
+    - name: Prepare and scan target system
+      ansible.builtin.include_role:
+        name: ansible-role-openscap

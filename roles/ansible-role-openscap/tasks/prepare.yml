@@ -1,0 +1,14 @@
+---
+- name: Send CPE files
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /usr/share/openscap/cpe/
+  with_fileglob:
+    - files/openscap/centos8/cpe/*
+
+- name: Send tailored Policies and Profiles
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /usr/share/xml/scap/ssg/content/
+  with_fileglob:
+    - files/openscap/centos8/content/*

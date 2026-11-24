@@ -1,0 +1,59 @@
+- block:
+    # ---------------- begin block ----------------
+    - name: Download Ansible remediation playbook
+        fetch:
+        src: /tmp/oscap-remediation.yml
+        dest: oscap-reports/oscap-remediation.yml
+        flat: true
+    
+    -   name: Read remediation playbook contents
+        command: cat oscap-reports/oscap-remediation.yml
+        register: remediation_text
+        delegate_to: localhost
+
+    -   name: Parse contents
+        set_fact:
+        remediation_contents: "{{ (remediation_text.stdout | from_yaml)[0] }}"
+
+    -   name: Create Dynamic Tasks
+        ansible.builtin.copy:
+        dest: "oscap-reports/{{ inventory_hostname }}-remediation-tasks.yml"
+        content: |
+            ---
+            {{ remediation_contents.tasks | to_nice_yaml }}
+        delegate_to: localhost
+    
+    -   name: Create Dynamic Vars
+        ansible.builtin.copy:
+        dest: "oscap-reports/{{ inventory_hostname }}-remediation-vars.yml"
+        content: |
+            ---
+            {{ remediation_contents.vars | to_nice_yaml }}
+        delegate_to: localhost
+
+    -   name: Include Dynamic Vars
+        include_vars: "oscap-reports/{{ inventory_hostname }}-remediation-vars.yml"
+
+    -   name: Include and execute Dynamic Tasks 
+        include_tasks: "oscap-reports/{{ inventory_hostname }}-remediation-tasks.yml"
+
+    -   name: Remove dynamic vars file
+        ansible.builtin.file: 
+        path: "oscap-reports/{{ inventory_hostname }}-remediation-vars.yml"
+        state: absent
+        delegate_to: localhost
+
+    -   name: Remove dynamic tasks file
+        ansible.builtin.file: 
+        path: "oscap-reports/{{ inventory_hostname }}-remediation-tasks.yml"
+        state: absent
+        delegate_to: localhost
+    # ------------- block conditions -------------
+    when:
+    - scap_cmd.rc | int != 0 # Only if the security scan failed
+    - remediate is defined
+    - remediate|bool
+    # ---------------- end block ------------------
+# ============== end 'always' block ==============
+
+
